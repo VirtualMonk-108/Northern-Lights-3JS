@@ -8,31 +8,6 @@ import GUI from 'lil-gui'
  */
 // Debug
 
-// northern lights near the model.glb
-const northernLights = new THREE.Group();
-const northernLightsGeometry = new THREE.BufferGeometry;
-const northernLightsCnt = 5000;
-
-const northernLightsPosArray = new Float32Array(northernLightsCnt * 3);
-
-for (let i = 0; i < northernLightsCnt * 3; i++) {
-    northernLightsPosArray[i] = (Math.random() - 0.5) * (Math.random() * 100);
-}
-
-northernLightsGeometry.setAttribute('position', new THREE.BufferAttribute(northernLightsPosArray, 3));
-
-
-// Materials
-const northernLightsMaterial = new THREE.PointsMaterial({
-    size: 0.005,
-    color: 'white'
-});
-
-// Points
-const northernLightsMesh = new THREE.Points(northernLightsGeometry, northernLightsMaterial);
-northernLights.add(northernLightsMesh);
-
-
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -40,8 +15,9 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
+
 // snow particles
-const particlesGeometry = new THREE.BufferGeometry;
+const snowParticlesGeometry = new THREE.BufferGeometry;
 const particlesCnt = 5000;
 
 const posArray = new Float32Array(particlesCnt * 3);
@@ -50,7 +26,7 @@ for (let i = 0; i < particlesCnt * 3; i++) {
     posArray[i] = (Math.random() - 0.5) * (Math.random() * 5);
 }
 
-particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+snowParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
 
 // Materials
@@ -60,7 +36,7 @@ const material = new THREE.PointsMaterial({
 });
 
 // Points
-const particlesMesh = new THREE.Points(particlesGeometry, material);
+const particlesMesh = new THREE.Points(snowParticlesGeometry, material);
 scene.add(particlesMesh);
 
 // Stars
@@ -92,6 +68,67 @@ scene.add(starMesh);
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
+const particleTexture = textureLoader.load('/textures/particles/11.png')
+
+// Vertex shader code
+const vertexShader = `
+uniform float time;
+varying vec3 vColor;
+
+void main() {
+    vec3 pos = position;
+    pos.y = sin(time + pos.x);
+
+    vColor = color;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+}
+`;
+
+
+const fragmentShader = `
+varying vec3 vColor;
+
+void main() {
+    gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+}
+`;
+
+/**
+ * Particles
+ */
+const particlesGeometry2 = new THREE.BufferGeometry
+const count = 500000
+
+const positions = new Float32Array(count * 4)
+
+for(let i = 0; i < count * 3; i++)
+{
+    positions[i] = (Math.random() - 0.5) * 10
+}
+
+particlesGeometry2.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+
+
+const particlesMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        time: { value: 1 }
+    },
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    size: 0.1,
+    sizeAttenuation: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    map: particleTexture,
+    transparent: true,
+    alphaMap: particleTexture,
+    depthWrite: false,
+});
+
+
+const particles = new THREE.Points(particlesGeometry2, particlesMaterial)
+scene.add(particles)
 
 let snow = null;
 const snowy_alps = new GLTFLoader();
@@ -169,7 +206,7 @@ window.addEventListener('resize', () =>
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(40, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(30, sizes.width / sizes.height, 0.1, 100)
 camera.position.x = 5
 camera.position.y = 2
 camera.position.z = 0
@@ -196,6 +233,8 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    particlesMaterial.uniforms.time.value = elapsedTime;
 
 
     // Rotate the model if it's loaded
